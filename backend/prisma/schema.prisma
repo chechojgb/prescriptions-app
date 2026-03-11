@@ -1,10 +1,11 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client"
+  engineType = "client"
+  output   = "../src/generated"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -28,8 +29,6 @@ model User {
 
   doctor    Doctor?
   patient   Patient?
-
-  prescriptionsAuthored Prescription[] @relation("AuthoredBy")
 }
 
 model Doctor {
