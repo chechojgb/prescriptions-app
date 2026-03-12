@@ -6,7 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Transition } from '@headlessui/react';
 
-// IMPORTANTE: Importamos tu hook de autenticación
+import api from '@/lib/axios';
+import { useAuthStore } from '@/store/authStore';
 import { useAuth } from "@/context/AuthContext";
 
 import HeadingSmall from '@/components/heading-small';
@@ -47,42 +48,25 @@ export default function ProfileForm() {
     }, [user, reset]);
 
     const onSubmit = async (values: ProfileValues) => {
-    setRecentlySuccessful(false);
-    
-    startTransition(async () => {
-        try {
-            // 1. Verificación de seguridad
+        setRecentlySuccessful(false);
+
+        startTransition(async () => {
+            try {
             if (!user?.id) return;
 
-            // 2. CONSTRUCCIÓN LIMPIA DE LA URL
-            // Asegúrate de que NEXT_PUBLIC_API_URL sea http://localhost:3001 (o tu puerto de Nest)
-            const baseUrl = process.env.NEXT_PUBLIC_API_URL; 
-            const url = `${baseUrl}/users/${user.id}`;
+            const { data } = await api.patch(`/users/${user.id}`, values);
 
-            console.log("Llamando a:", url); // Esto debería decir http://localhost:3001/users/id...
-
-            const response = await fetch(url, {
-                method: 'PATCH',
-                headers: { 
-                    'Content-Type': 'application/json' 
-                },
-                body: JSON.stringify(values),
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error("Error del servidor:", errorText);
-                throw new Error('Error al actualizar');
-            }
+            // Actualiza el store con los nuevos datos
+            const { setAuth, accessToken, refreshToken } = useAuthStore.getState();
+            setAuth(data, accessToken!, refreshToken!);
 
             setRecentlySuccessful(true);
             setTimeout(() => setRecentlySuccessful(false), 3000);
-
-        } catch (error) {
-            console.error("Error capturado:", error);
-        }
-    });
-};
+            } catch (error) {
+            console.error('Error al actualizar:', error);
+            }
+        });
+    };
 
     // 3. Mientras carga el auth, podemos mostrar un esqueleto o nada
     if (loading) return <div className="animate-pulse">Cargando perfil...</div>;

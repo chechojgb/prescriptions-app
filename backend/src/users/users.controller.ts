@@ -49,4 +49,12 @@ export class UsersController {
   ) {
     return this.usersService.update(id, updateDto);
   }
+
+  @Patch(':id/password')
+  async updatePassword(
+    @Param('id') id: string,
+    @Body() body: { current_password: string; password: string }
+  ) {
+    return this.usersService.updatePassword(id, body.current_password, body.password);
+  }
 }

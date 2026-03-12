@@ -33,7 +33,7 @@ export default function PatientDashboard() {
   const fetchDashboardData = useCallback(async () => {
     try {
       // Ajustamos el endpoint para que coincida con la estructura del backend
-      const { data: response } = await api.get(`/prescriptions?limit=3`);
+      const { data: response } = await api.get(`/me/prescriptions?limit=3`);
       setData({ prescriptions: response.data, total: response.total });
     } catch (error) {
       console.error('Error fetching dashboard:', error);

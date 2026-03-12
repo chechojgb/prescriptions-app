@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -11,6 +11,8 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import api from '@/lib/axios';
+import { useAuthStore } from '@/store/authStore';
 
 const passwordSchema = z.object({
     current_password: z.string().min(1, "La contraseña actual es requerida"),
@@ -26,10 +28,6 @@ type PasswordValues = z.infer<typeof passwordSchema>;
 export default function PasswordForm() {
     const [isPending, startTransition] = useTransition();
     const [recentlySuccessful, setRecentlySuccessful] = useState(false);
-    
-    // Refs para manejar el foco en caso de error
-    const currentPasswordRef = useRef<HTMLInputElement>(null);
-    const passwordRef = useRef<HTMLInputElement>(null);
 
     const { register, handleSubmit, reset, setError, formState: { errors } } = useForm<PasswordValues>({
         resolver: zodResolver(passwordSchema),
@@ -39,30 +37,31 @@ export default function PasswordForm() {
             password_confirmation: '',
         },
     });
+    console.log('errors:', errors);
 
     const onSubmit = async (values: PasswordValues) => {
+        console.log('valores:', values);
         setRecentlySuccessful(false);
-        
+
         startTransition(async () => {
             try {
-                // Aquí llamarías a tu Server Action, ejemplo:
-                // const result = await updatePasswordAction(values);
-                
-                console.log("Enviando cambio de contraseña...", values);
-                
-                // Si todo sale bien:
+                const { user } = useAuthStore.getState();
+                if (!user?.id) return;
+
+                await api.patch(`/users/${user.id}/password`, {
+                    current_password: values.current_password,
+                    password: values.password,
+                });
+
                 reset();
                 setRecentlySuccessful(true);
                 setTimeout(() => setRecentlySuccessful(false), 3000);
 
             } catch (error: any) {
-                // Lógica de enfoque basada en tu código original
-                if (error.type === 'current_password') {
-                    reset({ current_password: '' }, { keepValues: true });
-                    currentPasswordRef.current?.focus();
+                if (error.response?.status === 401) {
+                    setError('current_password', { message: 'Contraseña actual incorrecta' });
                 } else {
-                    reset({ password: '', password_confirmation: '' }, { keepValues: true });
-                    passwordRef.current?.focus();
+                    setError('password', { message: 'Error al actualizar la contraseña' });
                 }
             }
         });
@@ -70,63 +69,55 @@ export default function PasswordForm() {
 
     return (
         <div className="space-y-6">
-            <HeadingSmall 
-                title="Update password" 
-                description="Ensure your account is using a long, random password to stay secure" 
+            <HeadingSmall
+                title="Actualizar contraseña"
+                description="Asegúrate de usar una contraseña larga y segura"
             />
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <div className="grid gap-2">
-                    <Label htmlFor="current_password">Current password</Label>
+                    <Label htmlFor="current_password">Contraseña actual</Label>
                     <Input
                         {...register("current_password")}
                         id="current_password"
                         type="password"
-                        ref={(e) => {
-                            register("current_password").ref(e);
-                            // @ts-ignore
-                            currentPasswordRef.current = e;
-                        }}
                         className="mt-1 block w-full"
                         autoComplete="current-password"
-                        placeholder="Current password"
+                        placeholder="Contraseña actual"
                     />
                     <InputError message={errors.current_password?.message} />
                 </div>
 
                 <div className="grid gap-2">
-                    <Label htmlFor="password">New password</Label>
+                    <Label htmlFor="password">Nueva contraseña</Label>
                     <Input
                         {...register("password")}
                         id="password"
                         type="password"
-                        ref={(e) => {
-                            register("password").ref(e);
-                            // @ts-ignore
-                            passwordRef.current = e;
-                        }}
                         className="mt-1 block w-full"
                         autoComplete="new-password"
-                        placeholder="New password"
+                        placeholder="Nueva contraseña"
                     />
                     <InputError message={errors.password?.message} />
                 </div>
 
                 <div className="grid gap-2">
-                    <Label htmlFor="password_confirmation">Confirm password</Label>
+                    <Label htmlFor="password_confirmation">Confirmar contraseña</Label>
                     <Input
                         {...register("password_confirmation")}
                         id="password_confirmation"
                         type="password"
                         className="mt-1 block w-full"
                         autoComplete="new-password"
-                        placeholder="Confirm password"
+                        placeholder="Confirmar contraseña"
                     />
                     <InputError message={errors.password_confirmation?.message} />
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <Button disabled={isPending}>Save password</Button>
+                    <Button disabled={isPending}>
+                        {isPending ? 'Guardando...' : 'Guardar contraseña'}
+                    </Button>
 
                     <Transition
                         show={recentlySuccessful}
@@ -135,7 +126,7 @@ export default function PasswordForm() {
                         leave="transition ease-in-out"
                         leaveTo="opacity-0"
                     >
-                        <p className="text-sm text-neutral-600">Saved</p>
+                        <p className="text-sm text-green-600">Contraseña actualizada</p>
                     </Transition>
                 </div>
             </form>
