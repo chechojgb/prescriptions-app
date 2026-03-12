@@ -24,7 +24,7 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
             
             <DropdownMenuGroup>
                 <DropdownMenuItem asChild className="focus:bg-[#AF6DD6]/10 focus:text-[#AF6DD6] cursor-pointer">
-                    <Link className="flex w-full items-center" href="/dashboard/settings">
+                    <Link className="flex w-full items-center" href="/settings/profile">
                         <Settings className="mr-2 size-4 text-[#D6AF6D]" />
                         <span className="text-xs uppercase tracking-widest">Configuración</span>
                     </Link>

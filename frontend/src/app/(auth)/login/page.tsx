@@ -68,9 +68,9 @@ export default function LoginPage() {
 
         <div className="relative z-10 grid grid-cols-3 gap-4">
           {[
-            { value: '1.2K+', label: 'Prescripciones' },
-            { value: '340+', label: 'Médicos' },
-            { value: '2.8K+', label: 'Pacientes' },
+            { value: 'Revisa tus Prescripciones', label: 'Prescripciones' },
+            { value: 'Selecciona tus Médicos', label: 'Médicos' },
+            { value: 'Tú eres importante', label: 'Pacientes' },
           ].map((stat) => (
             <div key={stat.label} className="bg-white/5 border border-white/10 rounded-2xl p-4">
               <div className="text-2xl font-black text-white mb-1">{stat.value}</div>

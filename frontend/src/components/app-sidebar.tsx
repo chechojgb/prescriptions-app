@@ -43,6 +43,11 @@ const navItemsByRole = {
     ],
     doctor: [
         {
+            title: 'Dashboard',
+            href: '/doctor',
+            icon: BarChart3,
+        },
+        {
             title: 'Mis Prescripciones',
             href: '/doctor/prescriptions',
             icon: FileText,
@@ -54,6 +59,11 @@ const navItemsByRole = {
         },
     ],
     patient: [
+        {
+            title: 'Dashboard',
+            href: '/patient',
+            icon: BarChart3,
+        },
         {
             title: 'Mis Prescripciones',
             href: '/patient/prescriptions',

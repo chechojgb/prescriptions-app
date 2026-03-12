@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards, Post, Body, Patch } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { UsersService } from './users.service';
 import { RolesGuard } from '../auth/roles.guard';
@@ -8,6 +8,12 @@ import { Roles } from '../auth/roles.decorator';
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class UsersController {
   constructor(private usersService: UsersService) {}
+
+  @Post()
+  @Roles('admin')
+  create(@Body() createUserDto: any) {
+    return this.usersService.create(createUserDto);
+  }
 
   @Get('patients/search')
     @Roles('doctor', 'admin')
@@ -34,5 +40,13 @@ export class UsersController {
   @Roles('admin')
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(id);
+  }
+
+  @Patch(':id')
+  async update(
+    @Param('id') id: string,
+    @Body() updateDto: { name?: string; email?: string }
+  ) {
+    return this.usersService.update(id, updateDto);
   }
 }

@@ -1,9 +1,78 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
+
+  async create(data: { email: string; name: string; password: string; role: 'patient' | 'doctor'; specialty?: string }) {
+    const existingUser = await this.prisma.user.findUnique({ where: { email: data.email } });
+    if (existingUser) throw new ConflictException('Email already registered');
+
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+
+    return this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email: data.email,
+          name: data.name,
+          password: hashedPassword,
+          role: data.role,
+        },
+      });
+
+      if (data.role === 'doctor') {
+        await tx.doctor.create({
+          data: {
+            userId: user.id,
+            specialty: data.specialty || 'General Medicine',
+          },
+        });
+      } else if (data.role === 'patient') {
+        await tx.patient.create({
+          data: {
+            userId: user.id,
+          },
+        });
+      }
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      };
+    });
+  }
+
+  async update(id: string, data: { email?: string; name?: string }) {
+    if (data.email) {
+      const existingUser = await this.prisma.user.findFirst({
+        where: { 
+          email: data.email,
+          NOT: { id } 
+        }
+      });
+      if (existingUser) throw new ConflictException('Email already in use by another account');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id },
+      data: {
+        ...(data.name && { name: data.name }),
+        ...(data.email && { email: data.email }),
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+      }
+    });
+
+    return updatedUser;
+  }
 
   async findAll(role?: string, query?: string, page = 1, limit = 10) {
     const skip = (page - 1) * limit;

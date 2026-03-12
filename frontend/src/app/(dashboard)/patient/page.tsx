@@ -1,232 +1,186 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import api from '@/lib/axios';
-import { FileText, Search, Filter, Eye, Clock, CheckCircle, Pill } from 'lucide-react';
+import { 
+  Pill, Calendar, Clock, Activity, 
+  ArrowRight, Heart, Bell, ShieldCheck, FileText
+} from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
-interface Prescription {
-  id: string;
-  code: string;
-  status: 'pending' | 'consumed';
-  notes: string;
-  createdAt: string;
-  doctor: {
-    user: { name: string; email: string };
-  };
-  items: { id: string; name: string; dosage: string }[];
-}
+// Componente de tarjeta de medicamento (Optimizado con Memo)
+const TreatmentCard = React.memo(({ item }: any) => (
+  <div className="p-4 rounded-2xl bg-[#371851]/5 dark:bg-white/5 border border-[#371851]/10 dark:border-white/10 flex items-center gap-4">
+    <div className="w-12 h-12 rounded-xl bg-white dark:bg-[#1a0c2e] flex items-center justify-center shadow-sm">
+      <Pill size={24} className="text-[#18B0C6]" />
+    </div>
+    <div className="flex-1 min-w-0">
+      <p className="font-bold text-[#371851] dark:text-white truncate">{item.name}</p>
+      <p className="text-xs text-[#371851]/50 dark:text-white/50">{item.dosage || 'Dosis no especificada'}</p>
+    </div>
+    <div className="text-right">
+       <span className="text-[10px] font-black uppercase tracking-tighter text-[#18B0C6]">Activo</span>
+    </div>
+  </div>
+));
+TreatmentCard.displayName = 'TreatmentCard';
 
-export default function PatientPrescriptionsPage() {
-  const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+export default function PatientDashboard() {
+  const [data, setData] = useState({ prescriptions: [], total: 0 });
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState('');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [consuming, setConsuming] = useState<string | null>(null);
-  const limit = 10;
 
-  useEffect(() => {
-    fetchPrescriptions();
-  }, [status, page]);
-
-  async function fetchPrescriptions() {
-    setLoading(true);
+  const fetchDashboardData = useCallback(async () => {
     try {
-      const params = new URLSearchParams();
-      if (status) params.append('status', status);
-      params.append('page', String(page));
-      params.append('limit', String(limit));
-
-      const { data } = await api.get(`/me/prescriptions?${params.toString()}`);
-      setPrescriptions(data.data);
-      setTotal(data.total);
-    } catch {
-      toast.error('Error al cargar prescripciones');
+      // Ajustamos el endpoint para que coincida con la estructura del backend
+      const { data: response } = await api.get(`/prescriptions?limit=3`);
+      setData({ prescriptions: response.data, total: response.total });
+    } catch (error) {
+      console.error('Error fetching dashboard:', error);
+      toast.error('Error al sincronizar tu salud');
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  async function handleConsume(id: string) {
-    setConsuming(id);
-    try {
-      await api.put(`/prescriptions/${id}/consume`);
-      toast.success('Prescripción marcada como consumida');
-      fetchPrescriptions();
-    } catch {
-      toast.error('Error al consumir la prescripción');
-    } finally {
-      setConsuming(null);
-    }
-  }
+  useEffect(() => { 
+    fetchDashboardData(); 
+  }, [fetchDashboardData]);
 
-  const totalPages = Math.ceil(total / limit);
+  // Extraemos medicamentos de recetas pendientes o activas
+  const currentMedicines = useMemo(() => {
+    if (!data.prescriptions) return [];
+    return data.prescriptions
+      .filter((p: any) => p.status === 'pending' || p.status === 'active')
+      .flatMap((p: any) => p.items)
+      .slice(0, 4);
+  }, [data]);
 
-  const filtered = prescriptions.filter((p) => {
-    if (!search) return true;
-    return (
-      p.doctor?.user?.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.code.toLowerCase().includes(search.toLowerCase())
-    );
-  });
+  // Obtenemos el último médico que atendió (llamado 'author' en tu Prisma)
+  const lastPrescription = data.prescriptions[0] as any;
+  const lastDoctor = lastPrescription?.author;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <Toaster position="top-right" />
-
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-black text-[#371851] dark:text-white">Mis Prescripciones</h1>
-        <p className="text-sm text-[#371851]/50 dark:text-white/50 mt-1">{total} prescripciones en total</p>
-      </div>
-
-      {/* Filtros */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#371851]/40 dark:text-white/40" />
-          <input
-            type="text"
-            placeholder="Buscar por médico o código..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 rounded-xl border border-[#371851]/15 dark:border-white/10 bg-[#371851]/5 dark:bg-white/5 text-[#371851] dark:text-white text-sm focus:outline-none focus:border-[#18B0C6] transition"
-          />
-        </div>
-        <div className="relative">
-          <Filter size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#371851]/40 dark:text-white/40" />
-          <select
-            value={status}
-            onChange={(e) => { setStatus(e.target.value); setPage(1); }}
-            className="pl-10 pr-8 py-3 rounded-xl border border-[#371851]/15 dark:border-white/10 bg-white dark:bg-[#0f0a1a] text-[#371851] dark:text-white text-sm focus:outline-none focus:border-[#18B0C6] transition appearance-none cursor-pointer"
-          >
-            <option value="">Todos los estados</option>
-            <option value="pending">Pendiente</option>
-            <option value="consumed">Consumida</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Lista */}
-      {loading ? (
-        <div className="space-y-3">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-24 rounded-2xl bg-[#371851]/5 dark:bg-white/5 animate-pulse" />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#371851]/5 dark:bg-white/5 flex items-center justify-center mb-4">
-            <FileText size={28} className="text-[#371851]/30 dark:text-white/30" />
+      
+      {/* Saludo y Estado */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <h1 className="text-3xl font-black text-[#371851] dark:text-white">Panel de Bienestar</h1>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+            <p className="text-sm font-medium text-[#371851]/60 dark:text-white/60">
+                Sincronizado con Neon Database
+            </p>
           </div>
-          <p className="font-bold text-[#371851]/50 dark:text-white/50">No tienes prescripciones</p>
-          <p className="text-sm text-[#371851]/30 dark:text-white/30 mt-1">Tu médico aún no ha generado prescripciones</p>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map((p) => (
-            <div
-              key={p.id}
-              className="p-5 rounded-2xl border border-[#371851]/10 dark:border-white/10 bg-white dark:bg-white/5 hover:border-[#18B0C6]/40 transition"
-            >
-              <div className="flex items-start gap-4">
-                {/* Icono estado */}
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
-                  p.status === 'pending'
-                    ? 'bg-amber-100 dark:bg-amber-500/20'
-                    : 'bg-green-100 dark:bg-green-500/20'
-                }`}>
-                  {p.status === 'pending'
-                    ? <Clock size={18} className="text-amber-600 dark:text-amber-400" />
-                    : <CheckCircle size={18} className="text-green-600 dark:text-green-400" />
-                  }
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-black text-sm text-[#371851] dark:text-white">
-                      Dr. {p.doctor?.user?.name}
-                    </span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                      p.status === 'pending'
-                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
-                        : 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400'
-                    }`}>
-                      {p.status === 'pending' ? 'Pendiente' : 'Consumida'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-[#371851]/50 dark:text-white/50 mb-3">
-                    <span>{p.code}</span>
-                    <span>·</span>
-                    <span>{new Date(p.createdAt).toLocaleDateString('es-CO')}</span>
-                  </div>
-
-                  {/* Preview medicamentos */}
-                  <div className="flex flex-wrap gap-2">
-                    {p.items.slice(0, 3).map((item) => (
-                      <div key={item.id} className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#371851]/5 dark:bg-white/5 border border-[#371851]/10 dark:border-white/10">
-                        <Pill size={11} className="text-[#18B0C6]" />
-                        <span className="text-[10px] font-bold text-[#371851]/70 dark:text-white/70">{item.name}</span>
-                      </div>
-                    ))}
-                    {p.items.length > 3 && (
-                      <div className="flex items-center px-3 py-1 rounded-lg bg-[#371851]/5 dark:bg-white/5 border border-[#371851]/10 dark:border-white/10">
-                        <span className="text-[10px] font-bold text-[#371851]/40 dark:text-white/40">+{p.items.length - 3} más</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Acciones */}
-                <div className="flex flex-col gap-2 shrink-0">
-                  <Link
-                    href={`/patient/prescriptions/${p.id}`}
-                    className="w-9 h-9 rounded-xl border border-[#371851]/10 dark:border-white/10 flex items-center justify-center hover:bg-[#371851] hover:border-[#371851] hover:text-white dark:hover:bg-white/10 transition text-[#371851]/50 dark:text-white/50"
-                  >
-                    <Eye size={15} />
-                  </Link>
-                  {p.status === 'pending' && (
-                    <button
-                      onClick={() => handleConsume(p.id)}
-                      disabled={consuming === p.id}
-                      className="w-9 h-9 rounded-xl bg-[#18B0C6]/10 border border-[#18B0C6]/20 flex items-center justify-center hover:bg-[#18B0C6] hover:text-white transition text-[#18B0C6] disabled:opacity-50"
-                      title="Marcar como consumida"
-                    >
-                      <CheckCircle size={15} />
-                    </button>
-                  )}
-                </div>
-              </div>
+        <div className="flex gap-2">
+            <div className="px-4 py-2 rounded-2xl bg-white dark:bg-white/5 border border-[#371851]/10 flex items-center gap-2">
+                <Heart size={16} className="text-red-500" />
+                <span className="text-sm font-bold">Salud Estable</span>
             </div>
-          ))}
         </div>
-      )}
+      </div>
 
-      {/* Paginación */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 pt-4">
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="px-4 py-2 rounded-xl border border-[#371851]/15 dark:border-white/10 text-sm font-bold disabled:opacity-40 hover:bg-[#371851]/5 dark:hover:bg-white/5 transition"
-          >
-            Anterior
-          </button>
-          <span className="text-sm text-[#371851]/50 dark:text-white/50">
-            {page} / {totalPages}
-          </span>
-          <button
-            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            className="px-4 py-2 rounded-xl border border-[#371851]/15 dark:border-white/10 text-sm font-bold disabled:opacity-40 hover:bg-[#371851]/5 dark:hover:bg-white/5 transition"
-          >
-            Siguiente
-          </button>
+      {/* Grid Principal */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Columna Izquierda: Tratamiento Actual */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="flex items-center justify-between px-2">
+            <h2 className="font-black text-[#371851] dark:text-white flex items-center gap-2">
+              <Pill size={20} className="text-[#18B0C6]" />
+              Mi Tratamiento Actual
+            </h2>
+            <Link href="/patient/prescriptions" className="text-xs font-bold uppercase tracking-widest text-[#18B0C6]">
+                Ver Todas
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {loading ? (
+              [...Array(4)].map((_, i) => (
+                <div key={i} className="h-20 rounded-2xl bg-gray-100 dark:bg-white/5 animate-pulse" />
+              ))
+            ) : currentMedicines.length > 0 ? (
+              currentMedicines.map((item: any) => (
+                <TreatmentCard key={item.id} item={item} />
+              ))
+            ) : (
+              <div className="col-span-full p-10 rounded-3xl border-2 border-dashed border-[#371851]/10 flex flex-col items-center justify-center text-center">
+                <ShieldCheck size={40} className="text-[#371851]/20 mb-2" />
+                <p className="text-sm font-bold text-[#371851]/40">No tienes medicamentos activos en este momento</p>
+              </div>
+            )}
+          </div>
+
+          {/* Banner de Recordatorio */}
+          <div className="p-6 rounded-3xl bg-gradient-to-r from-[#371851] to-[#5a2a82] text-white shadow-xl relative overflow-hidden">
+             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h3 className="font-bold flex items-center gap-2">
+                        <Bell size={18} /> Recordatorio importante
+                    </h3>
+                    <p className="text-white/70 text-sm mt-1">
+                        Sigue las dosis indicadas por tu especialista para asegurar la efectividad del tratamiento.
+                    </p>
+                </div>
+                <button className="bg-[#18B0C6] hover:bg-[#159eb2] px-6 py-2 rounded-xl text-sm font-black transition-colors whitespace-nowrap">
+                    Entendido
+                </button>
+             </div>
+             <Activity size={100} className="absolute -bottom-10 -left-10 text-white/5" />
+          </div>
         </div>
-      )}
+
+        {/* Columna Derecha: Sidebar de Info */}
+        <div className="space-y-6">
+          {/* Tarjeta del Médico */}
+          <div className="p-6 rounded-3xl border border-[#371851]/10 dark:border-white/10 bg-white dark:bg-white/5">
+            <h3 className="text-xs font-black text-[#371851]/40 dark:text-white/40 uppercase tracking-widest mb-4">
+                Tu Especialista
+            </h3>
+            {lastDoctor ? (
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-[#18B0C6]/20 flex items-center justify-center text-[#18B0C6] font-black">
+                        {lastDoctor.user?.name.charAt(0)}
+                    </div>
+                    <div>
+                        <p className="font-bold text-sm">Dr. {lastDoctor.user?.name}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                            {lastDoctor.specialty || 'Especialista Registrado'}
+                        </p>
+                    </div>
+                </div>
+            ) : (
+                <p className="text-xs italic text-muted-foreground">Sin médicos recientes</p>
+            )}
+            <hr className="my-4 border-[#371851]/5 dark:border-white/5" />
+            <Link href="/patient/prescriptions" className="text-xs font-bold text-[#18B0C6] flex items-center gap-2 hover:gap-3 transition-all">
+                Historial clínico <ArrowRight size={14} />
+            </Link>
+          </div>
+
+          {/* Accesos Rápidos */}
+          <div className="grid grid-cols-2 gap-3">
+             <QuickAction icon={<Calendar size={18} />} label="Citas" />
+             <QuickAction icon={<FileText size={18} />} label="Informes" />
+          </div>
+        </div>
+
+      </div>
     </div>
   );
+}
+
+function QuickAction({ icon, label }: { icon: React.ReactNode, label: string }) {
+    return (
+        <button className="flex flex-col items-center justify-center p-4 rounded-3xl border border-[#371851]/10 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-[#371851]/5 transition-colors gap-2 group">
+            <div className="text-[#371851] dark:text-white opacity-60 group-hover:opacity-100 transition-opacity">
+                {icon}
+            </div>
+            <span className="text-xs font-bold text-[#371851] dark:text-white">{label}</span>
+        </button>
+    )
 }
