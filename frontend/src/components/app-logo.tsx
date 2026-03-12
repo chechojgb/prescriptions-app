@@ -22,12 +22,12 @@ export default function AppLogo() {
     return (
         <>
             <div className="text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-md overflow-hidden">
-                <Image
+                {/* <Image
                     src="/image/logo/zallar.png"
                     alt="Logo"
                     width={20}
                     height={20}
-                    className="object-contain"/>
+                    className="object-contain"/> */}
             </div>
             
             <div className="ml-3 flex items-center">
