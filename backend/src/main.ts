@@ -7,10 +7,17 @@ import helmet from 'helmet';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: false, 
+  }));
 
   app.enableCors({
-    origin: ['http://localhost:3000', 'http://localhost:3001', 'https://prescriptions-app-ruddy.vercel.app'],
+    origin: [
+      'http://localhost:3000', 
+      'http://localhost:3001', 
+      'https://prescriptions-app-ruddy.vercel.app'
+    ],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 
@@ -21,7 +28,7 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('Prescriptions API')
-    .setDescription('API for system to prescription medical ')
+    .setDescription('API for system to prescription medical')
     .setVersion('1.0')
     .addBearerAuth()
     .build();
@@ -29,7 +36,11 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
-  await app.listen(process.env.APP_PORT || 3000);
+
+  const port = process.env.PORT || 3000;
+  await app.listen(port, '0.0.0.0');
+  
+  console.log(`Application is running on port: ${port}`);
 }
 
 bootstrap();
