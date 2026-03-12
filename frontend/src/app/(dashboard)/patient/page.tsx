@@ -10,7 +10,7 @@ import {
 import toast, { Toaster } from 'react-hot-toast';
 
 // Componente de tarjeta de medicamento (Optimizado con Memo)
-const TreatmentCard = React.memo(({ item }: any) => (
+const TreatmentCard = React.memo(({ item, status }: any) => (
   <div className="p-4 rounded-2xl bg-[#371851]/5 dark:bg-white/5 border border-[#371851]/10 dark:border-white/10 flex items-center gap-4">
     <div className="w-12 h-12 rounded-xl bg-white dark:bg-[#1a0c2e] flex items-center justify-center shadow-sm">
       <Pill size={24} className="text-[#18B0C6]" />
@@ -20,7 +20,9 @@ const TreatmentCard = React.memo(({ item }: any) => (
       <p className="text-xs text-[#371851]/50 dark:text-white/50">{item.dosage || 'Dosis no especificada'}</p>
     </div>
     <div className="text-right">
-       <span className="text-[10px] font-black uppercase tracking-tighter text-[#18B0C6]">Activo</span>
+      <span className={`text-[10px] font-black uppercase tracking-tighter ${status === 'consumed' ? 'text-gray-400' : 'text-[#18B0C6]'}`}>
+        {status === 'consumed' ? 'Consumido' : 'Activo'}
+      </span>
     </div>
   </div>
 ));
@@ -51,7 +53,6 @@ export default function PatientDashboard() {
   const currentMedicines = useMemo(() => {
     if (!data.prescriptions) return [];
     return data.prescriptions
-      .filter((p: any) => p.status === 'pending' || p.status === 'active')
       .flatMap((p: any) => p.items)
       .slice(0, 4);
   }, [data]);
@@ -59,6 +60,8 @@ export default function PatientDashboard() {
   // Obtenemos el último médico que atendió (llamado 'author' en tu Prisma)
   const lastPrescription = data.prescriptions[0] as any;
   const lastDoctor = lastPrescription?.author;
+  console.log(data);
+  
 
   return (
     <div className="space-y-8">
