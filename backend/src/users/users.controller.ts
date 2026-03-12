@@ -9,6 +9,16 @@ import { Roles } from '../auth/roles.decorator';
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
+  @Get('patients/search')
+    @Roles('doctor', 'admin')
+    searchPatients(
+      @Query('query') query?: string,
+      @Query('page') page?: string,
+      @Query('limit') limit?: string,
+    ) {
+      return this.usersService.searchPatients(query, Number(page) || 1, Number(limit) || 10);
+  }
+
   @Get()
   @Roles('admin')
   findAll(

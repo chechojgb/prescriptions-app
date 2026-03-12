@@ -60,4 +60,28 @@ export class UsersService {
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
+  async searchPatients(query?: string, page = 1, limit = 10) {
+    const skip = (page - 1) * limit;
+
+    const patients = await this.prisma.patient.findMany({
+      where: query ? {
+        user: {
+          OR: [
+            { name: { contains: query, mode: 'insensitive' } },
+            { email: { contains: query, mode: 'insensitive' } },
+          ],
+        },
+      } : {},
+      include: {
+        user: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+      skip,
+      take: limit,
+    });
+
+    const total = await this.prisma.patient.count();
+    return { data: patients, total, page, limit };
+  }
 }

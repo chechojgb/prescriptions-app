@@ -13,7 +13,7 @@ export class AdminService {
       },
     } : {};
 
-    const [doctors, patients, prescriptions, byStatus, byDay, topDoctors] = await Promise.all([
+    const [doctors, patients, prescriptions, byStatus, byDay, topDoctorsRaw] = await Promise.all([
       this.prisma.doctor.count(),
       this.prisma.patient.count(),
       this.prisma.prescription.count({ where: dateFilter }),
@@ -36,6 +36,18 @@ export class AdminService {
       }),
     ]);
 
+    // Buscamos los nombres de los médicos
+    const doctorIds = topDoctorsRaw.map(d => d.authorId);
+    const doctorProfiles = await this.prisma.doctor.findMany({
+      where: { id: { in: doctorIds } },
+      include: { user: { select: { name: true } } },
+    });
+
+    const doctorMap = doctorProfiles.reduce((acc, d) => {
+      acc[d.id] = d.user.name;
+      return acc;
+    }, {} as Record<string, string>);
+
     return {
       totals: { doctors, patients, prescriptions },
       byStatus: byStatus.reduce((acc, curr) => {
@@ -46,8 +58,9 @@ export class AdminService {
         date: d.createdAt.toISOString().split('T')[0],
         count: d._count.createdAt,
       })),
-      topDoctors: topDoctors.map(d => ({
+      topDoctors: topDoctorsRaw.map(d => ({
         doctorId: d.authorId,
+        doctorName: doctorMap[d.authorId] || 'Desconocido',
         count: d._count.authorId,
       })),
     };

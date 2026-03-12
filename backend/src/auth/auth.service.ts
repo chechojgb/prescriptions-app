@@ -12,12 +12,18 @@ export class AuthService {
     private config: ConfigService,
   ) {}
 
+  async login(email: string, password: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) throw new UnauthorizedException('Credenciales inválidas');
+    const isValid = await bcrypt.compare(password, user.password);
+    if (!isValid) throw new UnauthorizedException('Credenciales inválidas');
+    return await this.generateTokens(user.id, user.email, user.role);
+  }
+
   async register(email: string, password: string, name: string, role: 'doctor' | 'patient') {
     const exists = await this.prisma.user.findUnique({ where: { email } });
     if (exists) throw new ConflictException('El email ya está registrado');
-
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const user = await this.prisma.user.create({
       data: {
         email,
@@ -28,18 +34,7 @@ export class AuthService {
         ...(role === 'patient' && { patient: { create: {} } }),
       },
     });
-
-    return this.generateTokens(user.id, user.email, user.role);
-  }
-
-  async login(email: string, password: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user) throw new UnauthorizedException('Credenciales inválidas');
-
-    const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) throw new UnauthorizedException('Credenciales inválidas');
-
-    return this.generateTokens(user.id, user.email, user.role);
+    return await this.generateTokens(user.id, user.email, user.role);
   }
 
   async refresh(userId: string) {
@@ -55,19 +50,22 @@ export class AuthService {
     });
   }
 
-  private generateTokens(userId: string, email: string, role: string) {
+  private async generateTokens(userId: string, email: string, role: string) {
     const payload = { sub: userId, email, role };
-
     const accessToken = this.jwt.sign(payload, {
       secret: this.config.get('JWT_ACCESS_SECRET'),
       expiresIn: this.config.get('JWT_ACCESS_TTL'),
     });
-
     const refreshToken = this.jwt.sign(payload, {
       secret: this.config.get('JWT_REFRESH_SECRET'),
       expiresIn: this.config.get('JWT_REFRESH_TTL'),
     });
 
-    return { accessToken, refreshToken };
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, name: true, role: true },
+    });
+
+    return { accessToken, refreshToken, user };
   }
 }
