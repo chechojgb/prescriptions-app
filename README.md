@@ -34,10 +34,28 @@ make dev
 \`\`\`
 
 ## URLs locales
-- Frontend: http://localhost:3000
-- Backend: http://localhost:3001
-- Swagger: http://localhost:3001/docs
-- Prisma Studio: http://localhost:5555
+| Servicio | URL |
+|----------|-----|
+| Frontend | http://localhost:3000 |
+| Backend | http://localhost:3001 |
+| Swagger UI | http://localhost:3001/docs |
+| Prisma Studio | npx prisma studio |
+
+## URLs producción
+| Servicio | URL |
+|----------|-----|
+| Frontend | https://prescriptions-app-ruddy.vercel.app |
+| Backend | https://prescriptions-app-production-aa8c.up.railway.app |
+| Swagger UI | https://prescriptions-app-production-aa8c.up.railway.app/docs |
+
+## Importar colección en Postman o Insomnia
+1. Abre Postman o Insomnia
+2. Click en **Import**
+3. Pega esta URL:
+\`\`\`
+https://prescriptions-app-production-aa8c.up.railway.app/docs-json
+\`\`\`
+4. Click en **Import** — todos los endpoints quedarán listos
 
 ## Cuentas de prueba
 | Rol | Email | Contraseña |
@@ -45,3 +63,10 @@ make dev
 | Admin | admin@test.com | admin123 |
 | Médico | dr@test.com | dr123 |
 | Paciente | patient@test.com | patient123 |
+
+
+## Stack
+- **Frontend:** Next.js 15, TypeScript, Tailwind CSS v4, Zustand
+- **Backend:** NestJS, Prisma 7, PostgreSQL
+- **Base de datos:** Neon (producción), Docker PostgreSQL (local)
+- **Deploy:** Vercel (frontend), Railway (backend)
