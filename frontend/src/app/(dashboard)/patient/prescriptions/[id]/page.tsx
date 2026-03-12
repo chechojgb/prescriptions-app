@@ -90,7 +90,7 @@ export default function DoctorPrescriptionDetailPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
-            href="/doctor/prescriptions"
+            href="/patient/prescriptions"
             className="w-9 h-9 rounded-xl border border-[#371851]/15 dark:border-white/10 flex items-center justify-center hover:bg-[#371851]/5 dark:hover:bg-white/5 transition"
           >
             <ArrowLeft size={16} className="text-[#371851] dark:text-white" />
