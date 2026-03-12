@@ -10,7 +10,7 @@ async function bootstrap() {
   app.use(helmet());
 
   app.enableCors({
-    origin: ['http://localhost:3000', 'http://localhost:3001'],
+    origin: ['http://localhost:3000', 'http://localhost:3001', 'https://prescriptions-app-ruddy.vercel.app'],
     credentials: true,
   });
 
