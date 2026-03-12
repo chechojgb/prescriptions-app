@@ -16,7 +16,7 @@ async function bootstrap() {
     origin: [
       'http://localhost:3000',
       'http://localhost:3001',
-      'https://prescriptions-app-production-aa8c.up.railway.app/'
+      'https://prescriptions-app-ruddy.vercel.app'
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
